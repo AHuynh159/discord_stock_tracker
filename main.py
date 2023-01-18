@@ -114,11 +114,15 @@ async def drop(
     ctx: interactions.CommandContext,
     stock_ticker: str,
 ):
-    await drop_from_profile(
+    ok: bool = await drop_from_profile(
         r=r,
         discord_id=ctx.author.id.__int__(),
         stock_ticker=stock_ticker.__str__(),
     )
 
+    if ok:
+        await ctx.send(f"`{stock_ticker}` will no longer be tracked.", ephemeral=True)
+    else:
+        await ctx.send(f"Could not complete operation. Are you sure you're tracking `{stock_ticker}`?", ephemeral=True)
 
 bot.start()
