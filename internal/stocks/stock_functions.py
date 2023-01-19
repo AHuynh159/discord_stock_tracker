@@ -4,8 +4,9 @@ from pandas import DataFrame
 
 
 async def get_price_by_date(ticker: str, date: str) -> DataFrame:
+
     # if no given date, take the most recent price
-    date = date - \
+    date = datetime.strptime(date, r"%Y-%m-%d") - \
         timedelta(days=4) if date else datetime.today() - timedelta(days=4)
     df = yf.download(ticker, start=date).tail(
         1).reset_index()[['Date', 'Close']]

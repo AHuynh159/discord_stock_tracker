@@ -9,11 +9,11 @@ from internal.redis_connector.funcs import *
 
 load_dotenv()
 
-bot = interactions.Client(token=os.getenv('TOKEN'))
+bot = interactions.Client(token=os.getenv("TOKEN"))
 r = redis.Redis(
-    host=os.getenv('REDIS_HOST'),
-    port=os.getenv('REDIS_PORT'),
-    password=os.getenv('REDIS_PASSWORD'),
+    host=os.getenv("REDIS_HOST"),
+    port=os.getenv("REDIS_PORT"),
+    password=os.getenv("REDIS_PASSWORD"),
 )
 
 
@@ -21,19 +21,19 @@ r = redis.Redis(
     options=[
         interactions.Option(
             name="stock_ticker",
-            description="Stock ticker. e.g. 'QQQ' or 'TSE.AC' to specify the <exchange>.<ticker>",
+            description="Stock ticker. e.g. `QQQ` or `TSE.AC` to specify the <exchange>.<ticker>",
             type=interactions.OptionType.STRING,
             required=True,
         ),
         interactions.Option(
             name="start_price",
-            description="Starting price to track the stock at.",
+            description="Starting price to track the stock.",
             type=interactions.OptionType.NUMBER,
             required=False,
         ),
         interactions.Option(
             name="start_date",
-            description="YYYY-MM-DD. Uses price at given date as starting price.",
+            description="YYYY-MM-DD. Uses closing price at given date as starting price.",
             type=interactions.OptionType.STRING,
             required=False,
         )
@@ -46,7 +46,6 @@ async def track(
     start_date: str = None,
 ):
     """Tracks a stock and sends a weekly Discord notification to provide price updates."""
-    await ctx.send(f"Hi there! {stock_ticker}")
 
     # get stock price
     price_data = await get_price_by_date(
@@ -55,24 +54,30 @@ async def track(
     )
 
     if price_data.empty:
-        await ctx.send('Could not find stock data. \
-            Make sure the date format and stock tickers are correct.', ephemeral=True)
+        await ctx.send("Could not find stock data. \
+            Make sure the date format and stock tickers are correct.", ephemeral=True)
     else:
-        if not start_date:
-            await ctx.send(
-                'No start date was provided. Using latest price from `{p}`.'.format(
-                    p=price_data['Date'].values[0]),
-                ephemeral=True
-            )
         ts = TrackedStock(
             ticker=stock_ticker,
             discord_channel=ctx.channel_id.__int__(),
-            start_price=price_data['Close'].values[0],
-            start_date=price_data['Date'].values[0],
+            start_price=price_data["Close"].values[0],
+            start_date=start_date,
         )
+        if start_price:
+            ts.start_price = start_price
+            await ctx.send(f"Tracking `{stock_ticker}` at price of `{start_price}`.", ephemeral=True)
+        elif not start_date:
+            ts.start_price = price_data["Close"].values[0]
+            ts.start_date = price_data["Date"].values[0]
+            await ctx.send(
+                "No date or price was provided. Using latest price from `{p}`.".format(
+                    p=ts.start_date),
+                ephemeral=True
+            )
+
         await add_stock_to_profile(
             r=r,
-            discord_id=ctx.author.id.__int__(),
+            discord_id=ctx.author.id,
             tracked_stock=ts,
         )
 
