@@ -1,4 +1,6 @@
 import yfinance as yf
+
+# from interactions import CommandContext
 from datetime import datetime, timedelta
 from pandas import DataFrame
 
@@ -14,10 +16,6 @@ async def get_price_by_date(ticker: str, date: str) -> DataFrame:
     return df
 
 
-if __name__ == '__main__':  # for testing purposes
-    date = datetime.today()
-    date = date - \
-        timedelta(days=4) if date else datetime.today() - timedelta(days=4)
-    test = yf.download('MSFT', start=date).tail(
-        1).reset_index()[['Date', 'Close']]
-    print(test)
+# async def send_weekly_notifications(ctx: CommandContext):
+    
+#     await ctx.send()

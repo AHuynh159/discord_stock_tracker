@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime
 
 
@@ -8,6 +8,9 @@ class TrackedStock:
     discord_channel: int
     start_price: float
     start_date: datetime
+
+    def to_dict(self):
+        return asdict(self)
 
 
 @dataclass

@@ -1,4 +1,5 @@
 import interactions
+from discord.ext import tasks
 import os
 import redis
 
@@ -129,5 +130,9 @@ async def drop(
         await ctx.send(f"`{stock_ticker}` will no longer be tracked.", ephemeral=True)
     else:
         await ctx.send(f"Could not complete operation. Are you sure you're tracking `{stock_ticker}`?", ephemeral=True)
+
+
+# @tasks.loop()
+
 
 bot.start()
