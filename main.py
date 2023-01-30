@@ -1,16 +1,25 @@
+
 import interactions
 from discord.ext import tasks
+
+import asyncio
+import datetime
+from datetime import date
+from dotenv import load_dotenv
 import os
 import redis
 
-from dotenv import load_dotenv
+
 from internal.stocks.stock_functions import *
 from internal.redis_connector.data_types import *
 from internal.redis_connector.funcs import *
+from internal.stocks.notifications import *
 
 load_dotenv()
-
-bot = interactions.Client(token=os.getenv("TOKEN"))
+bot = interactions.Client(
+    token=os.getenv("TOKEN"),
+    intents=interactions.Intents.DEFAULT,
+)
 r = redis.Redis(
     host=os.getenv("REDIS_HOST"),
     port=os.getenv("REDIS_PORT"),
@@ -76,7 +85,7 @@ async def track(
                 ephemeral=True
             )
 
-        await add_stock_to_profile(
+        await add_stock_to_user(
             r=r,
             discord_id=ctx.author.id,
             tracked_stock=ts,
@@ -98,7 +107,7 @@ async def get(
     stock_ticker: str,
 ):
     """Retrieves data stored in back-end. Mainly used for testing."""
-    tracked_stock = await get_from_profile(
+    tracked_stock = await get_stock_from_user(
         r=r,
         discord_id=ctx.author.id.__int__(),
         stock_ticker=stock_ticker.__str__()
@@ -120,7 +129,7 @@ async def drop(
     ctx: interactions.CommandContext,
     stock_ticker: str,
 ):
-    ok: bool = await drop_from_profile(
+    ok: bool = await drop_stock_from_user(
         r=r,
         discord_id=ctx.author.id.__int__(),
         stock_ticker=stock_ticker.__str__(),
@@ -132,7 +141,36 @@ async def drop(
         await ctx.send(f"Could not complete operation. Are you sure you're tracking `{stock_ticker}`?", ephemeral=True)
 
 
-# @tasks.loop()
+@bot.command()
+async def notify(
+    ctx: interactions.CommandContext
+):
+    await send_weekly_notifications(bot=bot, r=r)
+    print("notified")
+
+
+@bot.event
+async def on_ready():
+    myloop.start()
+    print("Bot is ready")
+
+
+@tasks.loop(seconds=1)
+async def myloop():
+    print("test")
+
+    if date.today().weekday() == 4:  # 4 = Friday
+        testloop.start()
+        myloop.stop()
+
+
+@tasks.loop(hours=1)
+async def testloop():
+
+    if datetime.now().hour == 16:  # 16 = 4pm
+        await asyncio.sleep(60*60*6)
+        myloop.start()
+        testloop.stop()
 
 
 bot.start()
