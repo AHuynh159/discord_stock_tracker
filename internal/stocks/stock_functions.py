@@ -11,11 +11,14 @@ async def get_price_by_date(ticker: bytes | str, date: str = None) -> DataFrame:
     # if no given date, take the most recent price
     date = datetime.strptime(date, r"%Y-%m-%d") - \
         timedelta(days=4) if date else datetime.today() - timedelta(days=4)
-    df = yf.download(
+    df: DataFrame = yf.download(
         ticker,
         start=date,
         progress=False,
         threads=True,
     ).tail(1).reset_index()[['Date', 'Close']]
-    df['Date'] = df['Date'].dt.date
+
+    if not df.empty:
+        df['Date'] = df['Date'].dt.date
+
     return df
