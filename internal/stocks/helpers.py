@@ -19,7 +19,7 @@ async def build_notification_rows(
     for ticker in curr_data["Close"].columns:
         curr_row = []
 
-        tracked_data = json.loads(r.hget(id, ticker.lower()).decode("utf-8"))
+        tracked_data = json.loads(r.hget(id, ticker).decode("utf-8"))
         change = round(
             curr_data["Close"][ticker].values[0] - tracked_data["start_price"],
             2
