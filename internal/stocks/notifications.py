@@ -19,6 +19,8 @@ async def send_weekly_notifications(bot: interactions.Client, r: Redis):
     ]
 
     for id in discord_ids:
+        if await rds.is_user_muted(r=r, discord_id=id):
+            continue
         tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
         curr_data: DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
 

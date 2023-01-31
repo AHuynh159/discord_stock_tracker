@@ -85,6 +85,14 @@ async def track(
                     p=ts.start_date),
                 ephemeral=True
             )
+        else:
+            await ctx.send(
+                "Using `{p}` from `{d}` as book price.".format(
+                    p=ts.start_price,
+                    d=start_date,
+                ),
+                ephemeral=True
+            )
 
         await add_stock_to_user(
             r=r,
@@ -144,12 +152,36 @@ async def drop(
         await ctx.send(f"Could not complete operation. Are you sure you're tracking `{stock_ticker}`?", ephemeral=True)
 
 
-# @bot.command()
-# async def notify(
-#     ctx: interactions.CommandContext
-# ):
-#     await send_weekly_notifications(bot=bot, r=r)
-#     print("notified")
+@bot.command()
+async def mute(ctx: interactions.CommandContext):
+    r.hset(
+        ctx.author.id.__int__(),
+        "USER_SETTINGS.MUTED",
+        1,
+    )
+    await ctx.send("You will no longer be pinged on weekly updates.",
+                   ephemeral=True
+                   )
+
+
+@bot.command()
+async def unmute(ctx: interactions.CommandContext):
+    r.hset(
+        ctx.author.id.__int__(),
+        "USER_SETTINGS.MUTED",
+        0,
+    )
+    await ctx.send("You will now be pinged during on weekly updates.",
+                   ephemeral=True
+                   )
+
+
+@bot.command()
+async def notify(
+    ctx: interactions.CommandContext
+):
+    await send_weekly_notifications(bot=bot, r=r)
+    print("notified")
 
 
 @bot.event

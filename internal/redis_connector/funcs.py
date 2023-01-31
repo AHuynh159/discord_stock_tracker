@@ -39,4 +39,9 @@ async def get_all_discord_ids(r: Redis) -> list[bytes]:
 
 
 async def get_all_tickers_from_user(r: Redis, discord_id: int) -> list[bytes]:
-    return list(r.hgetall(discord_id))
+    unfiltered = list(r.hgetall(discord_id))
+    return [i for i in unfiltered if "USER_SETTINGS." not in i.decode("utf=8")]
+
+
+async def is_user_muted(r: Redis, discord_id: int) -> bool:
+    return int(r.hget(discord_id, "USER_SETTINGS.MUTED")) == 1
