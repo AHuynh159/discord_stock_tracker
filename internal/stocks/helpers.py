@@ -1,6 +1,5 @@
 
 import json
-from .stock_functions import get_price_by_date
 from pandas import DataFrame
 from redis import Redis
 from typing import Tuple
