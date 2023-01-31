@@ -1,7 +1,5 @@
 import yfinance as yf
 
-from collections import Counter
-
 from datetime import datetime, timedelta
 from pandas import DataFrame
 
