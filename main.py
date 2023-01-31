@@ -56,7 +56,7 @@ async def track(
     start_date: str = None,
 ):
     """Tracks a stock and sends a weekly Discord notification to provide price updates."""
-
+    stock_ticker = stock_ticker.upper()
     # get stock price
     price_data = await get_price_by_date(
         ticker=stock_ticker,
@@ -107,6 +107,7 @@ async def get(
     stock_ticker: str,
 ):
     """Retrieves data stored in back-end. Mainly used for testing."""
+    stock_ticker = stock_ticker.upper()
     tracked_stock = await get_stock_from_user(
         r=r,
         discord_id=ctx.author.id.__int__(),
@@ -129,6 +130,7 @@ async def drop(
     ctx: interactions.CommandContext,
     stock_ticker: str,
 ):
+    stock_ticker = stock_ticker.upper()
     ok: bool = await drop_stock_from_user(
         r=r,
         discord_id=ctx.author.id.__int__(),
@@ -141,36 +143,34 @@ async def drop(
         await ctx.send(f"Could not complete operation. Are you sure you're tracking `{stock_ticker}`?", ephemeral=True)
 
 
-@bot.command()
-async def notify(
-    ctx: interactions.CommandContext
-):
-    await send_weekly_notifications(bot=bot, r=r)
-    print("notified")
+# @bot.command()
+# async def notify(
+#     ctx: interactions.CommandContext
+# ):
+#     await send_weekly_notifications(bot=bot, r=r)
+#     print("notified")
 
 
 @bot.event
 async def on_ready():
-    myloop.start()
+    check_if_friday.start()
     print("Bot is ready")
 
 
-@tasks.loop(seconds=1)
-async def myloop():
-    print("test")
-
+@tasks.loop(hours=12)
+async def check_if_friday():
     if date.today().weekday() == 4:  # 4 = Friday
-        testloop.start()
-        myloop.stop()
+        check_if_4pm.start()
+        check_if_friday.stop()
 
 
 @tasks.loop(hours=1)
-async def testloop():
-
+async def check_if_4pm():
     if datetime.now().hour == 16:  # 16 = 4pm
-        await asyncio.sleep(60*60*6)
-        myloop.start()
-        testloop.stop()
+        await send_weekly_notifications(bot=bot, r=r)
+        await asyncio.sleep(60*60*24)
+        check_if_friday.start()
+        check_if_4pm.stop()
 
 
 bot.start()
