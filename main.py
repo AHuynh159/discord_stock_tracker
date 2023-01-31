@@ -31,7 +31,7 @@ r = redis.Redis(
     options=[
         interactions.Option(
             name="stock_ticker",
-            description="Stock ticker. e.g. `QQQ` or `TSE.AC` to specify the <exchange>.<ticker>",
+            description="Stock ticker. e.g. `QQQ` or `AC.TO` to specify the <exchange>.<ticker>",
             type=interactions.OptionType.STRING,
             required=True,
         ),
@@ -64,8 +64,9 @@ async def track(
     )
 
     if price_data.empty:
-        await ctx.send("Could not find stock data. \
-            Make sure the date format and stock tickers are correct.", ephemeral=True)
+        await ctx.send("Could not find stock data. Make sure the date format and stock tickers/exchange are correct.",
+                       ephemeral=True
+                       )
     else:
         ts = TrackedStock(
             ticker=stock_ticker,
