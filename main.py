@@ -164,7 +164,7 @@ async def check_if_friday():
         check_if_friday.stop()
 
 
-@tasks.loop(hours=1)
+@tasks.loop(minutes=30)
 async def check_if_4pm():
     if datetime.now().hour == 16:  # 16 = 4pm
         await send_weekly_notifications(bot=bot, r=r)
