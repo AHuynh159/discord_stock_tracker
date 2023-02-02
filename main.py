@@ -191,14 +191,14 @@ async def on_ready():
 
 @tasks.loop(hours=12)
 async def check_if_friday():
-    if date.today().weekday() == 3:  # 4 = Friday
+    if date.today().weekday() == 4:  # 4 = Friday
         check_if_4pm.start()
         check_if_friday.stop()
 
 
 @tasks.loop(minutes=30)
 async def check_if_4pm():
-    if datetime.now().hour == 14:  # 16 = 4pm
+    if datetime.now().hour == 16:  # 16 = 4pm
         await send_weekly_notifications(bot=bot, r=r)
         await asyncio.sleep(60*60*24)
         check_if_friday.start()
