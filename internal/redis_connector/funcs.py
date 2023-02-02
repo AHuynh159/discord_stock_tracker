@@ -9,7 +9,7 @@ async def add_stock_to_user(r: Redis, discord_id: int, tracked_stock: TrackedSto
     if type(discord_id) is not int:
         discord_id = discord_id.__int__()
 
-    tracked_stock.start_price = round(tracked_stock.start_price, 2)
+    tracked_stock.book_cost = round(tracked_stock.book_cost, 2)
     r.hset(
         discord_id,
         tracked_stock.ticker,

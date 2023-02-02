@@ -20,10 +20,10 @@ async def build_notification_rows(
 
         tracked_data = json.loads(r.hget(id, ticker).decode("utf-8"))
         change = round(
-            curr_data["Close"][ticker].values[0] - tracked_data["start_price"],
+            curr_data["Close"][ticker].values[0] - tracked_data["book_cost"],
             2
         )
-        pct_change = round(change/tracked_data["start_price"]*100, 2)
+        pct_change = round(change/tracked_data["book_cost"]*100, 2)
         if pct_change > 0:
             icon = "🟩"
         elif pct_change < 0:
@@ -40,7 +40,7 @@ async def build_notification_rows(
 
         curr_row.extend([
             ticker,
-            tracked_data["start_price"],
+            tracked_data["book_cost"],
             "{:.2f}".format(round(curr_data["Close"][ticker].values[0], 2)),
             icon,
             "{:.2f}%".format(pct_change),

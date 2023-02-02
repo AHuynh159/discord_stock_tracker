@@ -6,7 +6,7 @@ from datetime import datetime
 class TrackedStock:
     ticker: str
     discord_channel: int
-    start_price: float
+    book_cost: float
     start_date: datetime
 
     def to_dict(self):
