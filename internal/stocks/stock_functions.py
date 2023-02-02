@@ -24,9 +24,11 @@ async def get_price_by_date(ticker: bytes | str, date: str = None) -> DataFrame:
         end=end_date,
         progress=False,
         threads=True,
-    ).tail(1).reset_index()[['Date', 'Close']]
+        interval="1h",
+    ).tail(1).reset_index()[['Datetime', 'Close']]
 
     if not df.empty:
+        df.rename({"Datetime": "Date"}, axis="columns", inplace=True)
         df['Date'] = df['Date'].dt.date
     df = df.round(2)
     return df
