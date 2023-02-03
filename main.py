@@ -150,18 +150,26 @@ async def unmute(ctx: interactions.CommandContext):
         "USER_SETTINGS.MUTED",
         0,
     )
-    await ctx.send("You will now be pinged during on weekly updates.",
+    await ctx.send("You will now be pinged on weekly updates.",
                    ephemeral=True
                    )
 
 
 @bot.command()
-async def update_me(
-    ctx: interactions.CommandContext
-):
+async def update_me(ctx: interactions.CommandContext):
     """Provide current status update on stocks you're tracking."""
     await send_weekly_notifications(bot=bot, r=r, ctx=ctx)
 
+
+@bot.command()
+async def make_this_my_default_channel(ctx: interactions.CommandContext):
+    """Forces the bot to only use this channel when sending weekly notifications."""
+    r.hset(
+        ctx.author.id.__int__(),
+        "USER_SETTINGS.DEFAULT_CHANNEL",
+        ctx.channel_id.__int__(),
+    )
+    await ctx.send("You will now only be pinged here during weekly notifications.")
 
 @bot.event
 async def on_ready():
@@ -171,6 +179,7 @@ async def on_ready():
 
 @tasks.loop(hours=12)
 async def check_if_friday():
+    print("Checking if Friday")
     if date.today().weekday() == 4:  # 4 = Friday
         check_if_4pm.start()
         check_if_friday.stop()
@@ -178,8 +187,9 @@ async def check_if_friday():
 
 @tasks.loop(minutes=30)
 async def check_if_4pm():
-    if datetime.now().hour == 16:  # 16 = 4pm
+    if datetime.utcnow().hour == 21:  # 21 = 4pm est
         await send_weekly_notifications(bot=bot, r=r)
+        print("Weekly notification sent")
         await asyncio.sleep(60*60*24)
         check_if_friday.start()
         check_if_4pm.stop()

@@ -47,6 +47,9 @@ async def send_weekly_notifications(
         )
 
         if not ctx:
+            default_channel = r.hget(id, "USER_SETTINGS.DEFAULT_CHANNEL")
+            if default_channel:
+                channel_id = int(default_channel)
             channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
             await channel.send("<@{disc_id}> Weekly reminder of stocks you're tracking.\n```\n{output}\n```"
                             .format(
@@ -56,8 +59,8 @@ async def send_weekly_notifications(
                             )
         else:
             await ctx.send("<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```"
-                            .format(
-                                disc_id=id.decode("utf-8"),
-                                output=output
-                            )
-                            )
+                           .format(
+                               disc_id=id.decode("utf-8"),
+                               output=output
+                           )
+                           )
