@@ -44,4 +44,8 @@ async def get_all_tickers_from_user(r: Redis, discord_id: int) -> list[bytes]:
 
 
 async def is_user_muted(r: Redis, discord_id: int) -> bool:
-    return int(r.hget(discord_id, "USER_SETTINGS.MUTED")) == 1
+    resp = r.hget(discord_id, "USER_SETTINGS.MUTED")
+    if resp:
+        return int(r.hget(discord_id, "USER_SETTINGS.MUTED")) == 1
+    else:
+        return resp
