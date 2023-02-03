@@ -42,7 +42,7 @@ async def send_weekly_notifications(
         output = t2a(
             header=msg_headers,
             body=msg_body,
-            style=PresetStyle.thin_compact,
+            style=PresetStyle.minimalist,
             first_col_heading=True,
         )
 
