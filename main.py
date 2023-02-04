@@ -180,7 +180,7 @@ async def on_ready():
 @tasks.loop(hours=12)
 async def check_if_friday():
     print("Checking if Friday")
-    if date.today().weekday() == 4:  # 4 = Friday
+    if date.today().weekday() == 5:  # 4 = Friday
         check_if_4pm.start()
         check_if_friday.stop()
 
