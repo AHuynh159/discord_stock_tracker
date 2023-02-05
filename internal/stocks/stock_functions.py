@@ -24,11 +24,18 @@ async def get_price_by_date(ticker: bytes | str, date: str = None) -> DataFrame:
         end=end_date,
         progress=False,
         threads=True,
-        interval="1h",
-    ).tail(1).reset_index()[['Datetime', 'Close']]
+    ).tail(1).reset_index()
+    try:
+        df = df[['Datetime', 'Close']]
+    except KeyError:
+        df = df[['Date', 'Close']]
 
     if not df.empty:
         df.rename({"Datetime": "Date"}, axis="columns", inplace=True)
         df['Date'] = df['Date'].dt.date
     df = df.round(2)
     return df
+
+
+async def get_name_from_ticker(ticker: str) -> str:
+    return yf.Ticker(ticker=ticker).get_info()["longName"]

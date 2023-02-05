@@ -68,6 +68,10 @@ async def track(
                        ephemeral=True
                        )
     else:
+        company = await get_name_from_ticker(ticker=stock_ticker)
+        msg = f"Tracking `{company}` for `{stock_ticker}`\n"
+        msg += "If this company is unexpected, make sure you specify the exchange.\n"
+
         ts = TrackedStock(
             ticker=stock_ticker,
             discord_channel=ctx.channel_id.__int__(),
@@ -76,17 +80,19 @@ async def track(
         )
         if book_cost:
             ts.book_cost = book_cost
-            await ctx.send(f"Tracking `{stock_ticker}` at price of `{book_cost}`.", ephemeral=True)
+            await ctx.send(msg + f"Using book cost of `{book_cost}`.", ephemeral=True)
         elif not start_date:
             ts.book_cost = price_data["Close"].values[0]
             ts.start_date = price_data["Date"].values[0]
             await ctx.send(
+                msg +
                 "No date or price was provided. Using latest price from `{p}`.".format(
                     p=ts.start_date),
                 ephemeral=True
             )
         else:
             await ctx.send(
+                msg +
                 "Using `{p}` from `{d}` as book price.".format(
                     p=ts.book_cost,
                     d=start_date,
@@ -170,6 +176,7 @@ async def make_this_my_default_channel(ctx: interactions.CommandContext):
         ctx.channel_id.__int__(),
     )
     await ctx.send("You will now only be pinged here during weekly notifications.")
+
 
 @bot.event
 async def on_ready():
