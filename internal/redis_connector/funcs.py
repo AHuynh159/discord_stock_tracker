@@ -46,6 +46,14 @@ async def get_all_tickers_from_user(r: Redis, discord_id: int) -> list[bytes]:
 async def is_user_muted(r: Redis, discord_id: int) -> bool:
     resp = r.hget(discord_id, "USER_SETTINGS.MUTED")
     if resp:
-        return int(r.hget(discord_id, "USER_SETTINGS.MUTED")) == 1
+        return int(resp) == 1
+    else:
+        return resp
+
+
+async def is_user_fb_blacklisted(r: Redis, discord_id: int) -> bool:
+    resp = r.hget(discord_id, "USER_SETTINGS.FEEDBACK_BLACKLISTED")
+    if resp:
+        return int(resp) == 1
     else:
         return resp
