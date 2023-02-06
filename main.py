@@ -161,6 +161,22 @@ async def unmute(ctx: interactions.CommandContext):
                    )
 
 
+@bot.event
+async def on_message_create(msg: interactions.Message):
+    if not msg.guild_id:
+        channel = await interactions.get(
+            bot,
+            interactions.Channel,
+            object_id=os.getenv("FEEDBACK_CHANNEL")
+        )
+        from_user = "Feedback from `{user}#{tag} ({id})`:\n".format(
+            user=msg.author.username,
+            tag=msg.author.discriminator,
+            id=msg.author.id,
+        )
+        await channel.send(from_user + msg.content)
+
+
 @bot.command()
 async def update_me(ctx: interactions.CommandContext):
     """Provide current status update on stocks you're tracking."""
