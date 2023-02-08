@@ -163,18 +163,50 @@ async def unmute(ctx: interactions.CommandContext):
 
 @bot.event
 async def on_message_create(msg: interactions.Message):
+    if msg.author.id == bot.me.id:
+        return
+
+    channel: interactions.Channel = await interactions.get(
+        bot,
+        interactions.Channel,
+        object_id=os.getenv("FEEDBACK_CHANNEL")
+    )
+
     if not msg.guild_id:
-        channel = await interactions.get(
-            bot,
-            interactions.Channel,
-            object_id=os.getenv("FEEDBACK_CHANNEL")
-        )
-        from_user = "Feedback from `{user}#{tag} ({id})`:\n".format(
-            user=msg.author.username,
-            tag=msg.author.discriminator,
-            id=msg.author.id,
-        )
-        await channel.send(from_user + msg.content)
+
+        if not await is_user_fb_blacklisted(r=r, discord_id=msg.author.id.__int__()):
+
+            from_user = "({id}) Feedback from `{user}#{tag}`:\n".format(
+                id=msg.author.id,
+                user=msg.author.username,
+                tag=msg.author.discriminator,
+            )
+            await channel.send(from_user + msg.content)
+
+    elif msg.channel_id == os.getenv("FEEDBACK_CHANNEL") \
+        and msg.author.id == os.getenv("ADMIN_ID") \
+        and msg.message_reference:
+        
+        bot_msg = await channel.get_message(msg.message_reference.message_id.__int__())
+
+        text: str = bot_msg.content
+        start, end = text.find("(")+1, text.find(")")
+        discord_id = text[start:end]
+        if msg.content.lower() == "blacklist":
+            r.hset(
+                discord_id,
+                "USER_SETTINGS.FEEDBACK_BLACKLISTED",
+                1
+            )
+        
+        if msg.content.lower() == "unblacklist":
+            r.hset(
+                discord_id,
+                "USER_SETTINGS.FEEDBACK_BLACKLISTED",
+                0
+            )
+        
+
 
 
 @bot.command()
