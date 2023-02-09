@@ -1,5 +1,8 @@
 
 import json
+import numpy as np
+import yfinance as yf
+
 from pandas import DataFrame
 from redis import Redis
 from typing import Tuple
@@ -17,10 +20,13 @@ async def build_notification_rows(
     # get price, and pct change
     for ticker in curr_data["Close"].columns:
         curr_row = []
+        latest_price = curr_data["Close"][ticker].values[0]
+        if np.isnan(latest_price):
+            latest_price = yf.Ticker(ticker).fast_info.last_price
 
         tracked_data = json.loads(r.hget(id, ticker).decode("utf-8"))
         change = round(
-            curr_data["Close"][ticker].values[0] - tracked_data["book_cost"],
+            latest_price - tracked_data["book_cost"],
             2
         )
         pct_change = round(change/tracked_data["book_cost"]*100, 2)
@@ -41,7 +47,7 @@ async def build_notification_rows(
         curr_row.extend([
             ticker,
             tracked_data["book_cost"],
-            "{:.2f}".format(round(curr_data["Close"][ticker].values[0], 2)),
+            "{:.2f}".format(round(latest_price, 2)),
             icon,
             "{:.2f}%".format(pct_change),
         ]
