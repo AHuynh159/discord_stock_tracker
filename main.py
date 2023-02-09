@@ -184,9 +184,9 @@ async def on_message_create(msg: interactions.Message):
             await channel.send(from_user + msg.content)
 
     elif msg.channel_id == os.getenv("FEEDBACK_CHANNEL") \
-        and msg.author.id == os.getenv("ADMIN_ID") \
-        and msg.message_reference:
-        
+            and msg.author.id == os.getenv("ADMIN_ID") \
+            and msg.message_reference:
+
         bot_msg = await channel.get_message(msg.message_reference.message_id.__int__())
 
         text: str = bot_msg.content
@@ -198,15 +198,13 @@ async def on_message_create(msg: interactions.Message):
                 "USER_SETTINGS.FEEDBACK_BLACKLISTED",
                 1
             )
-        
+
         if msg.content.lower() == "unblacklist":
             r.hset(
                 discord_id,
                 "USER_SETTINGS.FEEDBACK_BLACKLISTED",
                 0
             )
-        
-
 
 
 @bot.command()
