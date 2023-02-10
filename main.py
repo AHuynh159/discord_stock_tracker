@@ -68,9 +68,11 @@ async def track(
                        ephemeral=True
                        )
     else:
-        company = await get_name_from_ticker(ticker=stock_ticker)
-        msg = f"Tracking `{company}` for `{stock_ticker}`\n"
-        msg += "If this company is unexpected, make sure you specify the exchange.\n"
+        # company = await get_name_from_ticker(ticker=stock_ticker) # currently bugged
+        # msg = f"Tracking `{company}` for `{stock_ticker}`\n"
+        # msg += "If this company is unexpected, make sure you specify the exchange.\n"
+
+        msg = f"Tracking `{stock_ticker}`\n"
 
         ts = TrackedStock(
             ticker=stock_ticker,
