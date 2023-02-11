@@ -31,7 +31,7 @@ r = redis.Redis(
     options=[
         interactions.Option(
             name="stock_ticker",
-            description="Stock ticker. e.g. `QQQ` or `AC.TO` to specify the <ticker>.<exchange>",
+            description="Ticker. e.g. `QQQ` or `AC.TO` to specify the <ticker>.<exchange>. Press Tab for optional inputs.",
             type=interactions.OptionType.STRING,
             required=True,
         ),
