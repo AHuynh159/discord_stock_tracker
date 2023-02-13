@@ -5,17 +5,18 @@ from redis import Redis
 from .data_types import TrackedStock
 
 
-async def add_stock_to_user(r: Redis, discord_id: int, tracked_stock: TrackedStock):
+async def add_stock_to_user(r: Redis, discord_id: int, tracked_stock: TrackedStock) -> int:
     if type(discord_id) is not int:
         discord_id = discord_id.__int__()
 
     tracked_stock.book_cost = round(tracked_stock.book_cost, 2)
-    r.hset(
+    resp = r.hset(
         discord_id,
         tracked_stock.ticker,
         json.dumps(tracked_stock.to_dict(), indent=2,
                    sort_keys=True, default=str).encode("utf-8")
     )
+    return resp
 
 
 async def get_stock_from_user(r: Redis, discord_id: int, stock_ticker: str) -> DataFrame:
