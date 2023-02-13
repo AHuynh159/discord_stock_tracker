@@ -3,13 +3,13 @@ from . import helpers
 from ..redis_connector import funcs as rds
 from .stock_functions import get_price_by_date
 from pandas import DataFrame
-from redis import Redis
 from table2ascii import table2ascii as t2a, PresetStyle
+from typing import Any
 
 
 async def send_weekly_notifications(
     bot: interactions.Client,
-    r: Redis,
+    r: Any,
     ctx: interactions.CommandContext = None,
 ):
     if ctx:
@@ -26,9 +26,9 @@ async def send_weekly_notifications(
     ]
 
     for id in discord_ids:
-        # skip muted users
+
         if await rds.is_user_muted(r=r, discord_id=id):
-            continue
+            continue  # skip muted users
 
         tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
         curr_data: DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
@@ -46,21 +46,14 @@ async def send_weekly_notifications(
             first_col_heading=True,
         )
 
+        disc_id = id.decode("utf-8")
         if not ctx:
+            print(f"sending weekly notification for {id}")
+
             default_channel = r.hget(id, "USER_SETTINGS.DEFAULT_CHANNEL")
             if default_channel:
                 channel_id = int(default_channel)
             channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
-            await channel.send("<@{disc_id}> Weekly reminder of stocks you're tracking.\n```\n{output}\n```"
-                            .format(
-                                disc_id=id.decode("utf-8"),
-                                output=output
-                            )
-                            )
+            await channel.send(f"<@{disc_id}> Weekly reminder of stocks you're tracking.\n```\n{output}\n```")
         else:
-            await ctx.send("<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```"
-                           .format(
-                               disc_id=id.decode("utf-8"),
-                               output=output
-                           )
-                           )
+            await ctx.send(f"<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```")
