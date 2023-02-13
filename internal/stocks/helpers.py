@@ -22,7 +22,13 @@ async def build_notification_rows(
         curr_row = []
         latest_price = curr_data["Close"][ticker].values[0]
         if np.isnan(latest_price):
-            latest_price = yf.Ticker(ticker).fast_info.last_price
+            try:
+                latest_price = yf.Ticker(ticker).fast_info.last_price
+            except Exception as e:
+                print(f"Error during {build_notification_rows.__name__}:\n{e}")
+                # attempt to redownload
+                latest_price = yf.download(ticker, period="5d").tail(1)[
+                    "Close"].values[0]
 
         tracked_data = json.loads(r.hget(id, ticker).decode("utf-8"))
         change = round(
