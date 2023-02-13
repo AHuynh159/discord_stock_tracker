@@ -242,7 +242,7 @@ async def make_this_my_default_channel(ctx: interactions.CommandContext):
         "USER_SETTINGS.DEFAULT_CHANNEL",
         ctx.channel_id.__int__(),
     )
-    await ctx.send("You will now only be pinged here during weekly notifications.")
+    await ctx.send("You will now only be pinged here during weekly notifications.", ephemeral=True)
     print(f"`/{make_this_my_default_channel.name} complete")
 
 
