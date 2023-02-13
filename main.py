@@ -56,6 +56,7 @@ async def track(
     start_date: str = None,
 ):
     """Tracks a stock and sends a weekly Discord notification to provide price updates."""
+    print(f"`/track` invoked by {ctx.author.name} ({ctx.author.id})")
     stock_ticker = stock_ticker.upper()
     # get stock price
     price_data = await get_price_by_date(
@@ -64,6 +65,8 @@ async def track(
     )
 
     if price_data.empty:
+        print(
+            f"`/{track.name}` `{stock_ticker}` `{book_cost}` `{start_date}` returned an empty DataFrame")
         await ctx.send("Could not find stock data. Make sure the date format and stock tickers/exchange are correct.",
                        ephemeral=True
                        )
@@ -102,11 +105,16 @@ async def track(
                 ephemeral=True
             )
 
-        await add_stock_to_user(
+        resp = await add_stock_to_user(
             r=r,
             discord_id=ctx.author.id,
             tracked_stock=ts,
         )
+        if resp:
+            print(f"Added `{stock_ticker}` for `{ctx.author.id}`")
+        else:
+            print(f"Updated `{stock_ticker}` for {ctx.author.id}")
+        print(f"`/{track.name}` complete")
 
 
 @bot.command(
@@ -124,6 +132,7 @@ async def drop(
     stock_ticker: str,
 ):
     """Untracks a stock from your weekly notification."""
+    print(f"`/{drop.name}` invoked by {ctx.author.name} ({ctx.author.id})")
     stock_ticker = stock_ticker.upper()
     ok: bool = await drop_stock_from_user(
         r=r,
@@ -136,10 +145,13 @@ async def drop(
     else:
         await ctx.send(f"Could not complete operation. Are you sure you're tracking `{stock_ticker}`?", ephemeral=True)
 
+    print(f"`/{drop.name}` complete")
+
 
 @bot.command()
 async def mute(ctx: interactions.CommandContext):
     """Prevents the bot from mentioning/pinging you during updates."""
+    print(f"`/{mute.name}` invoked by {ctx.author.name} ({ctx.author.id})")
     r.hset(
         ctx.author.id.__int__(),
         "USER_SETTINGS.MUTED",
@@ -148,11 +160,13 @@ async def mute(ctx: interactions.CommandContext):
     await ctx.send("You will no longer be pinged on weekly updates.",
                    ephemeral=True
                    )
+    print(f"`/{mute.name}` complete")
 
 
 @bot.command()
 async def unmute(ctx: interactions.CommandContext):
     """Allows the bot to mention/ping you during updates."""
+    print(f"`/{unmute.name}` invoked by {ctx.author.name} ({ctx.author.id})")
     r.hset(
         ctx.author.id.__int__(),
         "USER_SETTINGS.MUTED",
@@ -161,6 +175,7 @@ async def unmute(ctx: interactions.CommandContext):
     await ctx.send("You will now be pinged on weekly updates.",
                    ephemeral=True
                    )
+    print(f"`/{unmute.name}` complete")
 
 
 @bot.event
@@ -177,7 +192,7 @@ async def on_message_create(msg: interactions.Message):
     if not msg.guild_id:
 
         if not await is_user_fb_blacklisted(r=r, discord_id=msg.author.id.__int__()):
-
+            print(f"Received DM from {msg.author} ({msg.author.id})")
             from_user = "({id}) Feedback from `{user}#{tag}`:\n".format(
                 id=msg.author.id,
                 user=msg.author.username,
@@ -212,18 +227,23 @@ async def on_message_create(msg: interactions.Message):
 @bot.command()
 async def update_me(ctx: interactions.CommandContext):
     """Provide current status update on stocks you're tracking."""
+    print(f"`/{update_me.name}` invoked by {ctx.author} ({ctx.author.id})")
     await send_weekly_notifications(bot=bot, r=r, ctx=ctx)
+    print(f"`/{update_me.name} complete")
 
 
 @bot.command()
 async def make_this_my_default_channel(ctx: interactions.CommandContext):
     """Forces the bot to only use this channel when sending weekly notifications."""
+    print(
+        f"`/{make_this_my_default_channel.name} invoked by {ctx.author} ({ctx.author.id})")
     r.hset(
         ctx.author.id.__int__(),
         "USER_SETTINGS.DEFAULT_CHANNEL",
         ctx.channel_id.__int__(),
     )
     await ctx.send("You will now only be pinged here during weekly notifications.")
+    print(f"`/{make_this_my_default_channel.name} complete")
 
 
 @bot.event
@@ -234,7 +254,7 @@ async def on_ready():
 
 @tasks.loop(hours=12)
 async def check_if_friday():
-    print("Checking if Friday")
+    print(f"Checking if Friday: {date.today().weekday()==4}")
     if date.today().weekday() == 4:  # 4 = Friday
         check_if_4pm.start()
         check_if_friday.stop()
@@ -242,6 +262,7 @@ async def check_if_friday():
 
 @tasks.loop(minutes=30)
 async def check_if_4pm():
+    print(f"Checking if 4pm EST: {datetime.utcnow().hour==21}")
     if datetime.utcnow().hour == 21:  # 21 = 4pm est
         await send_weekly_notifications(bot=bot, r=r)
         print("Weekly notification sent")
