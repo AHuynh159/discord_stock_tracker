@@ -59,6 +59,7 @@ async def track(
     print(f"`/track` invoked by {ctx.author.name} ({ctx.author.id})")
     stock_ticker = stock_ticker.upper()
     # get stock price
+    msg = await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
     price_data = await get_price_by_date(
         ticker=stock_ticker,
         date=start_date,
@@ -67,19 +68,18 @@ async def track(
     if price_data.empty:
         print(
             f"`/{track.name}` `{stock_ticker}` `{book_cost}` `{start_date}` returned an empty DataFrame")
-        await ctx.send("Could not find stock data. Make sure the date format and stock tickers/exchange are correct.",
-                       ephemeral=True
-                       )
+        await msg.edit("Could not find stock data. Make sure the date format and stock tickers/exchange are correct.")
     else:
         try:
             company = await get_name_from_ticker(ticker=stock_ticker)
-            msg = f"Tracking `{company}` for `{stock_ticker}`\n"
-            msg += "If this company is unexpected, make sure you specify the exchange.\n"
+            contents = f"Tracking `{company}` for `{stock_ticker}`\n"
+            contents += "If this company is unexpected, make sure you specify the exchange. " \
+                + "You can use my `/drop [ticker]` command to untrack this stock.\n"
 
         except Exception as e:
             print(
                 f"error occurred during `{get_name_from_ticker.__name__}`:\n{e}")
-            msg = f"Tracking `{stock_ticker}`\n"
+            contents = f"Tracking `{stock_ticker}`\n"
 
         ts = TrackedStock(
             ticker=stock_ticker,
@@ -89,24 +89,23 @@ async def track(
         )
         if book_cost:
             ts.book_cost = book_cost
-            await ctx.send(msg + f"Using book cost of `{book_cost}`.", ephemeral=True)
+            await msg.edit(contents + f"Using book cost of `{book_cost}`.", ephemeral=True)
         elif not start_date:
             ts.book_cost = price_data["Close"].values[0]
             ts.start_date = price_data["Date"].values[0]
-            await ctx.send(
-                msg +
+            await msg.edit(
+                contents +
                 "No date or price was provided. Using latest price from `{p}`.".format(
-                    p=ts.start_date),
-                ephemeral=True
+                    p=ts.start_date
+                ),
             )
         else:
-            await ctx.send(
-                msg +
+            await msg.edit(
+                contents +
                 "Using `{p}` from `{d}` as book price.".format(
                     p=ts.book_cost,
                     d=start_date,
                 ),
-                ephemeral=True
             )
 
         resp = await add_stock_to_user(

@@ -13,6 +13,7 @@ async def send_weekly_notifications(
     ctx: interactions.CommandContext = None,
 ):
     if ctx:
+        msg = await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
         discord_ids = [ctx.author.id.__str__().encode("utf-8")]
     else:
         discord_ids: list[bytes] = await rds.get_all_discord_ids(r=r)
@@ -56,4 +57,4 @@ async def send_weekly_notifications(
             channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
             await channel.send(f"<@{disc_id}> Weekly reminder of stocks you're tracking.\n```\n{output}\n```")
         else:
-            await ctx.send(f"<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```")
+            await msg.edit(f"<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```")
