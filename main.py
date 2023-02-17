@@ -89,7 +89,7 @@ async def track(
         )
         if book_cost:
             ts.book_cost = book_cost
-            await msg.edit(contents + f"Using book cost of `{book_cost}`.", ephemeral=True)
+            await msg.edit(contents + f"Using book cost of `{book_cost}`.")
         elif not start_date:
             ts.book_cost = price_data["Close"].values[0]
             ts.start_date = price_data["Date"].values[0]
