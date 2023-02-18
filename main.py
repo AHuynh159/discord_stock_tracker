@@ -201,7 +201,11 @@ async def on_message_create(msg: interactions.Message):
                 user=msg.author.username,
                 tag=msg.author.discriminator,
             )
-            await channel.send(from_user + msg.content)
+            pics = "\n"
+            if msg.attachments:
+                for attachment in msg.attachments:
+                    pics += f"{attachment.url}\n"
+            await channel.send(from_user + msg.content + pics)
 
     elif msg.channel_id == os.getenv("FEEDBACK_CHANNEL") \
             and msg.author.id == os.getenv("ADMIN_ID") \
