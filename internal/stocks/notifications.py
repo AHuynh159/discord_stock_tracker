@@ -2,7 +2,7 @@ import interactions
 from . import helpers
 from ..redis_connector import funcs as rds
 from .stock_functions import get_price_by_date
-from pandas import DataFrame
+import pandas as pd
 from table2ascii import table2ascii as t2a, PresetStyle
 from typing import Any
 
@@ -32,12 +32,14 @@ async def send_weekly_notifications(
             continue  # skip muted users
 
         tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
-        curr_data: DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
+        curr_data: pd.DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
 
         msg_body, channel_id = await helpers.build_notification_rows(
             r=r,
             id=id,
-            curr_data=curr_data
+            curr_data=curr_data,
+            solo_ticker=tickers[0].decode(
+                "utf-8") if not isinstance(curr_data.keys(), pd.MultiIndex) else None
         )
 
         output = t2a(

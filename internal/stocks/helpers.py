@@ -1,9 +1,9 @@
 
 import json
 import numpy as np
+import pandas as pd
 import yfinance as yf
 
-from pandas import DataFrame
 from redis import Redis
 from typing import Tuple
 
@@ -11,16 +11,21 @@ from typing import Tuple
 async def build_notification_rows(
     r: Redis,
     id: bytes,
-    curr_data: DataFrame,
+    curr_data: pd.DataFrame,
+    solo_ticker: str,
 ) -> Tuple[list, int]:
 
     msg_body = []
     count_channels = {}
 
     # get price, and pct change
-    for ticker in curr_data["Close"].columns:
+    for ticker in curr_data["Close"]:
         curr_row = []
-        latest_price = curr_data["Close"][ticker].values[0]
+        if not isinstance(curr_data.keys(), pd.MultiIndex):
+            latest_price = curr_data["Close"].values[0]
+            ticker = solo_ticker
+        else:
+            latest_price = curr_data["Close"][ticker].values[0]
         if np.isnan(latest_price):
             try:
                 latest_price = yf.Ticker(ticker).fast_info.last_price
