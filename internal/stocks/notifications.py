@@ -1,5 +1,6 @@
 import interactions
 from . import helpers
+from ..funcs.printflush import printFlush
 from ..redis_connector import funcs as rds
 from .stock_functions import get_price_by_date
 import pandas as pd
@@ -51,7 +52,7 @@ async def send_weekly_notifications(
 
         disc_id = id.decode("utf-8")
         if not ctx:
-            print(f"sending weekly notification for {id}")
+            printFlush(f"sending weekly notification for {id}")
 
             default_channel = r.hget(id, "USER_SETTINGS.DEFAULT_CHANNEL")
             if default_channel:

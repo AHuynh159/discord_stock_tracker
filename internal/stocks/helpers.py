@@ -6,6 +6,7 @@ import yfinance as yf
 
 from redis import Redis
 from typing import Tuple
+from ..funcs.printflush import printFlush
 
 
 async def build_notification_rows(
@@ -30,7 +31,7 @@ async def build_notification_rows(
             try:
                 latest_price = yf.Ticker(ticker).fast_info.last_price
             except Exception as e:
-                print(f"Error during {build_notification_rows.__name__}:\n{e}")
+                printFlush(f"Error during {build_notification_rows.__name__}:\n{e}")
                 # attempt to redownload
                 latest_price = yf.download(ticker, period="5d").tail(1)[
                     "Close"].values[0]
