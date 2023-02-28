@@ -1,6 +1,6 @@
-import yfinance as yf
-
 from datetime import datetime, timedelta
+
+import yfinance as yf
 from pandas import DataFrame
 
 
@@ -12,11 +12,14 @@ async def get_price_by_date(ticker: bytes | str, date: str = None) -> DataFrame:
     # if no given date, take the most recent price
     # 4 day window to account for weekends
     if not date:
-        date = datetime.today() - timedelta(days=4)
+        date = datetime.today() - timedelta(days=5)
         end_date = None
+    elif date == "-7d":
+        date = datetime.today() - timedelta(days=7)
+        end_date = date + timedelta(days=5)
     else:
-        date = datetime.strptime(date, r"%Y-%m-%d") - timedelta(days=4)
-        end_date = date + timedelta(days=4)
+        date = datetime.strptime(date, r"%Y-%m-%d") - timedelta(days=5)
+        end_date = date + timedelta(days=5)
 
     df: DataFrame = yf.download(
         ticker,
