@@ -1,7 +1,8 @@
 import json
-from pandas import DataFrame
 
+from pandas import DataFrame
 from redis import Redis
+
 from .data_types import TrackedStock
 
 

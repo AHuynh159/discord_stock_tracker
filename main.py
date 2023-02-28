@@ -1,19 +1,19 @@
 
-import interactions
-from discord.ext import tasks
-
 import asyncio
 import datetime
-from datetime import date
-from dotenv import load_dotenv
 import os
+from datetime import date
+
+import interactions
 import redis
+from discord.ext import tasks
+from dotenv import load_dotenv
 
 from internal.funcs.printflush import printFlush
-from internal.stocks.stock_functions import *
 from internal.redis_connector.data_types import *
 from internal.redis_connector.funcs import *
 from internal.stocks.notifications import *
+from internal.stocks.stock_functions import *
 
 load_dotenv()
 bot = interactions.Client(
