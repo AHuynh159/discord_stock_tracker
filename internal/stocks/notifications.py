@@ -19,10 +19,13 @@ async def send_weekly_notifications(
     bot: interactions.Client,
     r: Any,
     ctx: interactions.CommandContext = None,
+    force: int = None,
 ):
     if ctx:
         msg = await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
         discord_ids = [ctx.author.id.__str__().encode("utf-8")]
+    elif force:
+        discord_ids: list[int] = [force]
     else:
         discord_ids: list[bytes] = await rds.get_all_discord_ids(r=r)
 
@@ -96,7 +99,8 @@ async def build_notification_rows(
             try:
                 latest_price = yf.Ticker(ticker).fast_info.last_price
             except Exception as e:
-                printFlush(f"Error during {build_notification_rows.__name__}:\n{e}")
+                printFlush(
+                    f"Error during {build_notification_rows.__name__}:\n{e}")
                 # attempt to redownload
                 latest_price = yf.download(ticker, period="5d").tail(1)[
                     "Close"].values[0]
@@ -105,14 +109,16 @@ async def build_notification_rows(
 
         # get % change and icon comparing today with book cost
         all_time_change = round(latest_price - tracked_data["book_cost"], 2)
-        all_time_pct_change = round(all_time_change/tracked_data["book_cost"]*100, 2)
+        all_time_pct_change = round(
+            all_time_change/tracked_data["book_cost"]*100, 2)
         all_time_change_icon = await helpers.get_change_icon(all_time_pct_change)
 
         # get % change and icon comparing today with last week's price
         try:
             last_week_price = (await get_price_by_date(ticker, "-7d"))["Close"].values[0]
             last_week_change = round(latest_price - last_week_price, 2)
-            last_week_pct_change = round(last_week_change/last_week_price*100, 2)
+            last_week_pct_change = round(
+                last_week_change/last_week_price*100, 2)
             last_week_change_icon = await helpers.get_change_icon(last_week_pct_change)
         except Exception as e:
             printFlush(e)
