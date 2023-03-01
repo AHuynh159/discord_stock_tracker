@@ -26,52 +26,8 @@ async def send_weekly_notifications(
     else:
         discord_ids: list[bytes] = await rds.get_all_discord_ids(r=r)
 
-    msg_headers = [
-        "Ticker",
-        "Book Cost",
-        "Current Price",
-        " ",
-        "% Change\nSince Tracked",
-        "Change From\nLast Week -->  ",
-        "  ",
-        "$$$",
-        "%",
-    ]
-
     for id in discord_ids:
-
-        if await rds.is_user_muted(r=r, discord_id=id):
-            continue  # skip muted users
-
-        tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
-        curr_data: pd.DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
-
-        msg_body, channel_id = await build_notification_rows(
-            r=r,
-            id=id,
-            curr_data=curr_data,
-            solo_ticker=tickers[0].decode(
-                "utf-8") if not isinstance(curr_data.keys(), pd.MultiIndex) else None
-        )
-
-        output = t2a(
-            header=msg_headers,
-            body=msg_body,
-            style=PresetStyle.minimalist,
-            first_col_heading=True,
-        )
-
-        disc_id = id.decode("utf-8")
-        if not ctx:
-            printFlush(f"sending weekly notification for {id}")
-
-            default_channel = r.hget(id, "USER_SETTINGS.DEFAULT_CHANNEL")
-            if default_channel:
-                channel_id = int(default_channel)
-            channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
-            await channel.send(f"<@{disc_id}> Weekly reminder of stocks you're tracking.\n```\n{output}\n```")
-        else:
-            await msg.edit(f"<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```")
+        await stock_update_user(bot, r, msg)
 
 
 async def build_notification_rows(
@@ -96,7 +52,8 @@ async def build_notification_rows(
             try:
                 latest_price = yf.Ticker(ticker).fast_info.last_price
             except Exception as e:
-                printFlush(f"Error during {build_notification_rows.__name__}:\n{e}")
+                printFlush(
+                    f"Error during {build_notification_rows.__name__}:\n{e}")
                 # attempt to redownload
                 latest_price = yf.download(ticker, period="5d").tail(1)[
                     "Close"].values[0]
@@ -105,14 +62,16 @@ async def build_notification_rows(
 
         # get % change and icon comparing today with book cost
         all_time_change = round(latest_price - tracked_data["book_cost"], 2)
-        all_time_pct_change = round(all_time_change/tracked_data["book_cost"]*100, 2)
+        all_time_pct_change = round(
+            all_time_change/tracked_data["book_cost"]*100, 2)
         all_time_change_icon = await helpers.get_change_icon(all_time_pct_change)
 
         # get % change and icon comparing today with last week's price
         try:
             last_week_price = (await get_price_by_date(ticker, "-7d"))["Close"].values[0]
             last_week_change = round(latest_price - last_week_price, 2)
-            last_week_pct_change = round(last_week_change/last_week_price*100, 2)
+            last_week_pct_change = round(
+                last_week_change/last_week_price*100, 2)
             last_week_change_icon = await helpers.get_change_icon(last_week_pct_change)
         except Exception as e:
             printFlush(e)
@@ -143,3 +102,53 @@ async def build_notification_rows(
         msg_body.append(curr_row)
 
     return msg_body, max(count_channels, key=count_channels.get)
+
+
+async def stock_update_user(
+    bot: interactions.Client,
+    r: Any,
+    msg: interactions.Message = None,
+):
+    if await rds.is_user_muted(r=r, discord_id=id):
+        return  # skip muted users
+
+    tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
+    curr_data: pd.DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
+
+    msg_body, channel_id = await build_notification_rows(
+        r=r,
+        id=id,
+        curr_data=curr_data,
+        solo_ticker=tickers[0].decode(
+            "utf-8") if not isinstance(curr_data.keys(), pd.MultiIndex) else None
+    )
+
+    msg_headers = [
+        "Ticker",
+        "Book Cost",
+        "Current Price",
+        " ",
+        "% Change\nSince Tracked",
+        "Change From\nLast Week -->  ",
+        "  ",
+        "$$$",
+        "%",
+    ]
+    output = t2a(
+        header=msg_headers,
+        body=msg_body,
+        style=PresetStyle.minimalist,
+        first_col_heading=True,
+    )
+
+    disc_id = id.decode("utf-8")
+    if not msg:
+        printFlush(f"sending weekly notification for {id}")
+
+        default_channel = r.hget(id, "USER_SETTINGS.DEFAULT_CHANNEL")
+        if default_channel:
+            channel_id = int(default_channel)
+        channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
+        await channel.send(f"<@{disc_id}> Weekly reminder of stocks you're tracking.\n```\n{output}\n```")
+    else:
+        await msg.edit(f"<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```")
