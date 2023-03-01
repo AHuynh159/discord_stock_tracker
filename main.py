@@ -16,9 +16,11 @@ from internal.stocks.notifications import *
 from internal.stocks.stock_functions import *
 
 load_dotenv()
+
+intents = interactions.Intents.ALL
 bot = interactions.Client(
     token=os.getenv("TOKEN"),
-    intents=interactions.Intents.DEFAULT,
+    intents=intents,
 )
 r = redis.Redis(
     host=os.getenv("REDIS_HOST"),
@@ -135,7 +137,8 @@ async def drop(
     stock_ticker: str,
 ):
     """Untracks a stock from your weekly notification."""
-    printFlush(f"`/{drop.name}` invoked by {ctx.author.name} ({ctx.author.id})")
+    printFlush(
+        f"`/{drop.name}` invoked by {ctx.author.name} ({ctx.author.id})")
     stock_ticker = stock_ticker.upper()
     ok: bool = await drop_stock_from_user(
         r=r,
@@ -154,7 +157,8 @@ async def drop(
 @bot.command()
 async def mute(ctx: interactions.CommandContext):
     """Prevents the bot from mentioning/pinging you during updates."""
-    printFlush(f"`/{mute.name}` invoked by {ctx.author.name} ({ctx.author.id})")
+    printFlush(
+        f"`/{mute.name}` invoked by {ctx.author.name} ({ctx.author.id})")
     r.hset(
         ctx.author.id.__int__(),
         "USER_SETTINGS.MUTED",
@@ -169,7 +173,8 @@ async def mute(ctx: interactions.CommandContext):
 @bot.command()
 async def unmute(ctx: interactions.CommandContext):
     """Allows the bot to mention/ping you during updates."""
-    printFlush(f"`/{unmute.name}` invoked by {ctx.author.name} ({ctx.author.id})")
+    printFlush(
+        f"`/{unmute.name}` invoked by {ctx.author.name} ({ctx.author.id})")
     r.hset(
         ctx.author.id.__int__(),
         "USER_SETTINGS.MUTED",
@@ -206,7 +211,14 @@ async def on_message_create(msg: interactions.Message):
                 for attachment in msg.attachments:
                     pics += f"{attachment.url}\n"
             await channel.send(from_user + msg.content + pics)
-
+    elif msg.channel_id == os.getenv("FEEDBACK_CHANNEL") \
+            and msg.author.id == os.getenv("ADMIN_ID") \
+            and msg.content.split(" ")[0] == "!force_notify":
+        await send_weekly_notifications(
+            bot=bot,
+            r=r,
+            force=msg.content.split(" ")[1].encode("utf-8")
+        )
     elif msg.channel_id == os.getenv("FEEDBACK_CHANNEL") \
             and msg.author.id == os.getenv("ADMIN_ID") \
             and msg.message_reference:
@@ -234,7 +246,8 @@ async def on_message_create(msg: interactions.Message):
 @bot.command()
 async def update_me(ctx: interactions.CommandContext):
     """Provide current status update on stocks you're tracking."""
-    printFlush(f"`/{update_me.name}` invoked by {ctx.author} ({ctx.author.id})")
+    printFlush(
+        f"`/{update_me.name}` invoked by {ctx.author} ({ctx.author.id})")
     await send_weekly_notifications(bot=bot, r=r, ctx=ctx)
     printFlush(f"`/{update_me.name} complete")
 

@@ -19,10 +19,13 @@ async def send_weekly_notifications(
     bot: interactions.Client,
     r: Any,
     ctx: interactions.CommandContext = None,
+    force: int = None,
 ):
     if ctx:
         msg = await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
         discord_ids = [ctx.author.id.__str__().encode("utf-8")]
+    elif force:
+        discord_ids: list[int] = [force]
     else:
         discord_ids: list[bytes] = await rds.get_all_discord_ids(r=r)
 
