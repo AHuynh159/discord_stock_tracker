@@ -60,6 +60,7 @@ async def track(
     """Tracks a stock and sends a weekly Discord notification to provide price updates."""
     printFlush(f"`/track` invoked by {ctx.author.name} ({ctx.author.id})")
     stock_ticker = stock_ticker.upper()
+    
     # get stock price
     msg = await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
     price_data = await get_price_by_date(
@@ -214,10 +215,11 @@ async def on_message_create(msg: interactions.Message):
     elif msg.channel_id == os.getenv("FEEDBACK_CHANNEL") \
             and msg.author.id == os.getenv("ADMIN_ID") \
             and msg.content.split(" ")[0] == "!force_notify":
-        await send_weekly_notifications(
+
+        await stock_update_user(
             bot=bot,
             r=r,
-            force=msg.content.split(" ")[1].encode("utf-8")
+            id=msg.content.split(" ")[1].encode("utf-8")
         )
     elif msg.channel_id == os.getenv("FEEDBACK_CHANNEL") \
             and msg.author.id == os.getenv("ADMIN_ID") \
@@ -248,7 +250,13 @@ async def update_me(ctx: interactions.CommandContext):
     """Provide current status update on stocks you're tracking."""
     printFlush(
         f"`/{update_me.name}` invoked by {ctx.author} ({ctx.author.id})")
-    await send_weekly_notifications(bot=bot, r=r, ctx=ctx)
+
+    await stock_update_user(
+        bot=bot,
+        r=r,
+        id=ctx.author.id.__str__().encode(),
+        msg=await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
+    )
     printFlush(f"`/{update_me.name} complete")
 
 
@@ -286,7 +294,7 @@ async def check_if_4pm():
     if datetime.utcnow().hour == 21:  # 21 = 4pm est
         await send_weekly_notifications(bot=bot, r=r)
         printFlush("Weekly notification sent")
-        await asyncio.sleep(60*60*24)
+        await asyncio.sleep(60*60*24*5)
         check_if_friday.start()
         check_if_4pm.stop()
 

@@ -15,22 +15,11 @@ from . import helpers
 from .stock_functions import get_price_by_date
 
 
-async def send_weekly_notifications(
-    bot: interactions.Client,
-    r: Any,
-    ctx: interactions.CommandContext = None,
-    force: int = None,
-):
-    if ctx:
-        msg = await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
-        discord_ids = [ctx.author.id.__str__().encode("utf-8")]
-    elif force:
-        discord_ids: list[int] = [force]
-    else:
-        discord_ids: list[bytes] = await rds.get_all_discord_ids(r=r)
+async def send_weekly_notifications(bot: interactions.Client, r: Any):
+    discord_ids: list[bytes] = await rds.get_all_discord_ids(r=r)
 
     for id in discord_ids:
-        await stock_update_user(bot, r, msg)
+        await stock_update_user(bot, r, id)
 
 
 async def build_notification_rows(
@@ -110,7 +99,8 @@ async def build_notification_rows(
 async def stock_update_user(
     bot: interactions.Client,
     r: Any,
-    msg: interactions.Message = None,
+    id: bytes,
+    msg: interactions.Message = None,  # the bot's reply if invoked with /update_me
 ):
     if await rds.is_user_muted(r=r, discord_id=id):
         return  # skip muted users
