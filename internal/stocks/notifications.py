@@ -26,74 +26,70 @@ async def build_notification_rows(
     r: Redis,
     id: bytes,
     curr_data: pd.DataFrame,
-    solo_ticker: str,
+    ticker: str,
 ) -> Tuple[list, int]:
 
-    msg_body = []
     count_channels = {}
-
     # get price, and pct change
-    for ticker in curr_data["Close"]:
-        curr_row = []
-        if not isinstance(curr_data.keys(), pd.MultiIndex):
-            latest_price = curr_data["Close"].values[0]
-            ticker = solo_ticker
-        else:
-            latest_price = curr_data["Close"][ticker].values[0]
-        if np.isnan(latest_price):
-            try:
-                latest_price = yf.Ticker(ticker).fast_info.last_price
-            except Exception as e:
-                printFlush(
-                    f"Error during {build_notification_rows.__name__}:\n{e}")
-                # attempt to redownload
-                latest_price = yf.download(ticker, period="5d").tail(1)[
-                    "Close"].values[0]
-
-        tracked_data = json.loads(r.hget(id, ticker).decode("utf-8"))
-
-        # get % change and icon comparing today with book cost
-        all_time_change = round(latest_price - tracked_data["book_cost"], 2)
-        all_time_pct_change = round(
-            all_time_change/tracked_data["book_cost"]*100, 2)
-        all_time_change_icon = await helpers.get_change_icon(all_time_pct_change)
-
-        # get % change and icon comparing today with last week's price
+    curr_row = []
+    if not isinstance(curr_data.keys(), pd.MultiIndex):
+        latest_price = curr_data["Close"].values[0]
+        ticker = ticker
+    else:
+        latest_price = curr_data["Close"][ticker].values[0]
+    if np.isnan(latest_price):
         try:
-            last_week_price = (await get_price_by_date(ticker, "-7d"))["Close"].values[0]
-            last_week_change = round(latest_price - last_week_price, 2)
-            last_week_pct_change = round(
-                last_week_change/last_week_price*100, 2)
-            last_week_change_icon = await helpers.get_change_icon(last_week_pct_change)
+            latest_price = yf.Ticker(ticker).fast_info.last_price
         except Exception as e:
-            printFlush(e)
-            last_week_change = 0
-            last_week_pct_change = 0
-            last_week_change_icon = await helpers.get_change_icon(0)
+            printFlush(
+                f"Error during {build_notification_rows.__name__}:\n{e}")
+            # attempt to redownload
+            latest_price = yf.download(ticker, period="5d").tail(1)[
+                "Close"].values[0]
 
-        # keep track of most frequent discord channel
-        channel_id = tracked_data["discord_channel"]
-        if channel_id in count_channels:
-            count_channels[channel_id] += 1
-        else:
-            count_channels[channel_id] = 1
+    tracked_data = json.loads(r.hget(id, ticker).decode("utf-8"))
 
-        # the row being built out
-        curr_row.extend([
-            ticker,
-            "${:.2f}".format(tracked_data["book_cost"]),
-            "${:.2f}".format(round(latest_price, 2)),
-            all_time_change_icon,
-            "{:.2f}%".format(all_time_pct_change),
-            " ",
-            last_week_change_icon,
-            "${:.2f}".format(last_week_change),
-            "{:.2f}%".format(last_week_pct_change),
-        ]
-        )
-        msg_body.append(curr_row)
+    # get % change and icon comparing today with book cost
+    all_time_change = round(latest_price - tracked_data["book_cost"], 2)
+    all_time_pct_change = round(
+        all_time_change/tracked_data["book_cost"]*100, 2)
+    all_time_change_icon = await helpers.get_change_icon(all_time_pct_change)
 
-    return msg_body, max(count_channels, key=count_channels.get)
+    # get % change and icon comparing today with last week's price
+    try:
+        last_week_price = (await get_price_by_date(ticker, "-7d"))["Close"].values[0]
+        last_week_change = round(latest_price - last_week_price, 2)
+        last_week_pct_change = round(
+            last_week_change/last_week_price*100, 2)
+        last_week_change_icon = await helpers.get_change_icon(last_week_pct_change)
+    except Exception as e:
+        printFlush(e)
+        last_week_change = 0
+        last_week_pct_change = 0
+        last_week_change_icon = await helpers.get_change_icon(0)
+
+    # keep track of most frequent discord channel
+    channel_id = tracked_data["discord_channel"]
+    if channel_id in count_channels:
+        count_channels[channel_id] += 1
+    else:
+        count_channels[channel_id] = 1
+
+    # the row being built out
+    curr_row.extend([
+        ticker,
+        "${:.2f}".format(tracked_data["book_cost"]),
+        "${:.2f}".format(round(latest_price, 2)),
+        all_time_change_icon,
+        "{:.2f}%".format(all_time_pct_change),
+        " ",
+        last_week_change_icon,
+        "${:.2f}".format(last_week_change),
+        "{:.2f}%".format(last_week_pct_change),
+    ]
+    )
+
+    return curr_row, max(count_channels, key=count_channels.get)
 
 
 async def stock_update_user(
@@ -108,14 +104,6 @@ async def stock_update_user(
     tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
     curr_data: pd.DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
 
-    msg_body, channel_id = await build_notification_rows(
-        r=r,
-        id=id,
-        curr_data=curr_data,
-        solo_ticker=tickers[0].decode(
-            "utf-8") if not isinstance(curr_data.keys(), pd.MultiIndex) else None
-    )
-
     msg_headers = [
         "Ticker",
         "Book Cost",
@@ -127,6 +115,28 @@ async def stock_update_user(
         "$$$",
         "%",
     ]
+
+    if not isinstance(curr_data.keys(), pd.MultiIndex):
+        pass
+    
+    msg_body = t2a(header=msg_headers) + "\n"
+
+    for ticker in curr_data["Close"]:
+        msg_row_content, channel_id = await build_notification_rows(
+            r=r,
+            id=id,
+            curr_data=curr_data,
+            ticker=tickers[0].decode(
+                "utf-8") if not isinstance(curr_data.keys(), pd.MultiIndex) else None
+        )
+        msg_row = t2a(
+            header=None,
+            body=msg_row_content,
+            style=PresetStyle.minimalist,
+            first_col_heading=False
+        )
+
+
     output = t2a(
         header=msg_headers,
         body=msg_body,
