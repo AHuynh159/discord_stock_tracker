@@ -216,6 +216,10 @@ async def on_message_create(msg: interactions.Message):
             and msg.author.id == os.getenv("ADMIN_ID") \
             and msg.content.split(" ")[0] == "!force_notify":
 
+        if msg.content.split(" ")[1] == "all" \
+            and bot.me.id == os.getenv("TEST_BOT_ID"):
+            await send_weekly_notifications(bot=bot, r=r)
+
         await stock_update_user(
             bot=bot,
             r=r,

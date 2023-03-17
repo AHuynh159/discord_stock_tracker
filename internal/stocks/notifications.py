@@ -1,18 +1,16 @@
 import json
-from typing import Any, Tuple
+from typing import Any, Tuple, List
 
 import interactions
-import numpy as np
 import pandas as pd
-import yfinance as yf
 from redis import Redis
-from table2ascii import PresetStyle
-from table2ascii import table2ascii as t2a
+from scipy import stats
 
 from ..funcs.printflush import printFlush
 from ..redis_connector import funcs as rds
 from . import helpers
-from .stock_functions import get_price_by_date
+from .stock_functions import get_price_by_date, get_latest_price
+from .data_types import NotificationRow
 
 
 async def send_weekly_notifications(bot: interactions.Client, r: Any):
@@ -25,28 +23,13 @@ async def send_weekly_notifications(bot: interactions.Client, r: Any):
 async def build_notification_rows(
     r: Redis,
     id: bytes,
-    curr_data: pd.DataFrame,
+    latest_price: float,
     ticker: str,
 ) -> Tuple[list, int]:
 
-    count_channels = {}
-    # get price, and pct change
-    curr_row = []
-    if not isinstance(curr_data.keys(), pd.MultiIndex):
-        latest_price = curr_data["Close"].values[0]
-        ticker = ticker
-    else:
-        latest_price = curr_data["Close"][ticker].values[0]
-    if np.isnan(latest_price):
-        try:
-            latest_price = yf.Ticker(ticker).fast_info.last_price
-        except Exception as e:
-            printFlush(
-                f"Error during {build_notification_rows.__name__}:\n{e}")
-            # attempt to redownload
-            latest_price = yf.download(ticker, period="5d").tail(1)[
-                "Close"].values[0]
+    curr_row = NotificationRow(ticker=ticker)
 
+    # retrieve stored data from redis
     tracked_data = json.loads(r.hget(id, ticker).decode("utf-8"))
 
     # get % change and icon comparing today with book cost
@@ -68,28 +51,19 @@ async def build_notification_rows(
         last_week_pct_change = 0
         last_week_change_icon = await helpers.get_change_icon(0)
 
-    # keep track of most frequent discord channel
-    channel_id = tracked_data["discord_channel"]
-    if channel_id in count_channels:
-        count_channels[channel_id] += 1
-    else:
-        count_channels[channel_id] = 1
-
     # the row being built out
-    curr_row.extend([
-        ticker,
-        "${:.2f}".format(tracked_data["book_cost"]),
-        "${:.2f}".format(round(latest_price, 2)),
-        all_time_change_icon,
-        "{:.2f}%".format(all_time_pct_change),
-        " ",
-        last_week_change_icon,
-        "${:.2f}".format(last_week_change),
-        "{:.2f}%".format(last_week_pct_change),
-    ]
-    )
+    curr_row.book_cost = round(tracked_data["book_cost"], 2)
+    curr_row.current_price = round(latest_price, 2)
 
-    return curr_row, max(count_channels, key=count_channels.get)
+    curr_row.delta_tracked_icon = all_time_change_icon
+    curr_row.delta_tracked_amount = all_time_change
+    curr_row.delta_tracked_pct = str(all_time_pct_change) + "%"
+
+    curr_row.delta_week_icon = last_week_change_icon
+    curr_row.delta_week_amount = last_week_change
+    curr_row.delta_week_pct = str(last_week_pct_change) + "%"
+
+    return curr_row.__list__(), tracked_data["discord_channel"]
 
 
 async def stock_update_user(
@@ -103,55 +77,68 @@ async def stock_update_user(
 
     tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
     curr_data: pd.DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
-
-    msg_headers = [
-        "Ticker",
-        "Book Cost",
-        "Current Price",
-        " ",
-        "% Change\nSince Tracked",
-        "Change From\nLast Week -->  ",
-        "  ",
-        "$$$",
-        "%",
-    ]
-
-    if not isinstance(curr_data.keys(), pd.MultiIndex):
-        pass
-    
-    msg_body = t2a(header=msg_headers) + "\n"
-
-    for ticker in curr_data["Close"]:
-        msg_row_content, channel_id = await build_notification_rows(
-            r=r,
-            id=id,
-            curr_data=curr_data,
-            ticker=tickers[0].decode(
-                "utf-8") if not isinstance(curr_data.keys(), pd.MultiIndex) else None
-        )
-        msg_row = t2a(
-            header=None,
-            body=msg_row_content,
-            style=PresetStyle.minimalist,
-            first_col_heading=False
-        )
-
-
-    output = t2a(
-        header=msg_headers,
-        body=msg_body,
-        style=PresetStyle.minimalist,
-        first_col_heading=True,
-    )
-
     disc_id = id.decode("utf-8")
-    if not msg:
+    tables, channel_id = await build_table(r=r, disc_id=id, df=curr_data, tickers=tickers)
+
+    if not msg:  # if not invoked by a user
         printFlush(f"sending weekly notification for {id}")
 
         default_channel = r.hget(id, "USER_SETTINGS.DEFAULT_CHANNEL")
         if default_channel:
             channel_id = int(default_channel)
         channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
-        await channel.send(f"<@{disc_id}> Weekly reminder of stocks you're tracking.\n```\n{output}\n```")
+        await channel.send(f"<@{disc_id}> Weekly reminder of stocks you're tracking.\n")
     else:
-        await msg.edit(f"<@{disc_id}> Here's a list of stocks you're tracking.\n```\n{output}\n```")
+        await msg.edit(f"<@{disc_id}> Here's a list of stocks you're tracking.\n")
+        channel_id = msg.channel_id.__str__()
+        channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
+
+    for table in tables:
+        await channel.send("```" + table.__str__() + "```")
+
+
+async def build_table(
+    r: Redis,
+    disc_id: int,
+    tickers: str,
+    df: pd.DataFrame
+) -> Tuple[List[str], int]:
+    msg_headers = [
+        "Ticker",
+        "Book Cost",
+        "Current Price",
+        " ",
+        "$ Δ Since Tracked",
+        "% Δ Since Tracked",
+        "Δ From Last Week -->",
+        "  ",
+        "$",
+        r"%",
+    ]
+    tables = []
+    channel_ids = []
+
+    curr_table = await helpers.pretty_table_defaults(headers=msg_headers)
+
+    for ticker in [t.decode("utf-8") for t in tickers]:
+        latest_price = await get_latest_price(df=df, ticker=ticker)
+        curr_row, channel_id = await build_notification_rows(
+            id=disc_id,
+            r=r,
+            latest_price=latest_price,
+            ticker=ticker,
+        )
+        curr_table.add_row(curr_row)
+        channel_ids.append(channel_id)
+
+        # if table character length exceeds discord msg limit,
+        # separate the table rows into list elements
+        if len(curr_table.get_string()) > 2000:
+            # work in progress
+            curr_table.del_row(-1)
+            tables.append(curr_table)
+            curr_table = await helpers.pretty_table_defaults(headers=msg_headers)
+            curr_table.add_row(curr_row)
+    tables.append(curr_table)
+
+    return tables, stats.mode(channel_ids, keepdims=True).mode[0]
