@@ -4,7 +4,7 @@ from typing import Any, Tuple, List
 import interactions
 import pandas as pd
 from redis import Redis
-from scipy import stats
+from collections import Counter
 
 from ..funcs.printflush import printFlush
 from ..redis_connector import funcs as rds
@@ -116,7 +116,7 @@ async def build_table(
         r"%",
     ]
     tables = []
-    channel_ids = []
+    channel_ids = []    
 
     curr_table = await helpers.pretty_table_defaults(headers=msg_headers)
 
@@ -141,4 +141,5 @@ async def build_table(
             curr_table.add_row(curr_row)
     tables.append(curr_table)
 
-    return tables, stats.mode(channel_ids, keepdims=True).mode[0]
+    counts = Counter(channel_ids)
+    return tables, counts.most_common(1)[0][0]
