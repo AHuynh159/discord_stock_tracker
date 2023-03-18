@@ -60,7 +60,7 @@ async def track(
     """Tracks a stock and sends a weekly Discord notification to provide price updates."""
     printFlush(f"`/track` invoked by {ctx.author.name} ({ctx.author.id})")
     stock_ticker = stock_ticker.upper()
-    
+
     # get stock price
     msg = await ctx.send("One moment... This may take several seconds, depending on Yahoo Finance.")
     price_data = await get_price_by_date(
@@ -73,16 +73,19 @@ async def track(
             f"`/{track.name}` `{stock_ticker}` `{book_cost}` `{start_date}` returned an empty DataFrame")
         await msg.edit("Could not find stock data. Make sure the date format and stock tickers/exchange are correct.")
     else:
+        contents = io.StringIO()
         try:
             company = await get_name_from_ticker(ticker=stock_ticker)
-            contents = f"Tracking `{company}` for `{stock_ticker}`\n"
-            contents += "If this company is unexpected, make sure you specify the exchange. " \
-                + "You can use my `/drop [ticker]` command to untrack this stock.\n"
+            contents.write(f"Tracking `{company}` for `{stock_ticker}`\n")
+            contents.write(
+                "If this company is unexpected, make sure you specify the exchange. ")
+            contents.write(
+                "You can use my `/drop [ticker]` command to untrack this stock.\n")
 
         except Exception as e:
             printFlush(
                 f"error occurred during `{get_name_from_ticker.__name__}`:\n{e}")
-            contents = f"Tracking `{stock_ticker}`\n"
+            contents.write(f"Tracking `{stock_ticker}`\n")
 
         ts = TrackedStock(
             ticker=stock_ticker,
@@ -92,24 +95,18 @@ async def track(
         )
         if book_cost:
             ts.book_cost = book_cost
-            await msg.edit(contents + f"Using book cost of `{book_cost}`.")
+            contents.write(f"Using book cost of `{book_cost}`.")
+            await msg.edit(contents.getvalue())
         elif not start_date:
             ts.book_cost = price_data["Close"].values[0]
             ts.start_date = price_data["Date"].values[0]
-            await msg.edit(
-                contents +
-                "No date or price was provided. Using latest price from `{p}`.".format(
-                    p=ts.start_date
-                ),
-            )
+            contents.write(
+                f"No date or price was provided. Using `{ts.book_cost}` from `{ts.start_date}`.")
+            await msg.edit(contents.getvalue())
         else:
-            await msg.edit(
-                contents +
-                "Using `{p}` from `{d}` as book price.".format(
-                    p=ts.book_cost,
-                    d=start_date,
-                ),
-            )
+            contents.write(
+                f"Using `{ts.book_cost}` from `{start_date}` as book price.")
+            await msg.edit(contents.getvalue())
 
         resp = await add_stock_to_user(
             r=r,
@@ -123,7 +120,7 @@ async def track(
         printFlush(f"`/{track.name}` complete")
 
 
-@bot.command(
+@ bot.command(
     options=[
         interactions.Option(
             name="stock_ticker",
@@ -217,7 +214,7 @@ async def on_message_create(msg: interactions.Message):
             and msg.content.split(" ")[0] == "!force_notify":
 
         if msg.content.split(" ")[1] == "all" \
-            and bot.me.id == os.getenv("TEST_BOT_ID"):
+                and bot.me.id == os.getenv("TEST_BOT_ID"):
             await send_weekly_notifications(bot=bot, r=r)
 
         await stock_update_user(
@@ -253,7 +250,7 @@ async def on_message_create(msg: interactions.Message):
 async def update_me(ctx: interactions.CommandContext):
     """Provide current status update on stocks you're tracking."""
     printFlush(
-        f"`/{update_me.name}` invoked by {ctx.author} ({ctx.author.id})")
+        f"`/{update_me.name}` invoked by {ctx.author.name}#{ctx.author.discriminator} ({ctx.author.id})")
 
     await stock_update_user(
         bot=bot,

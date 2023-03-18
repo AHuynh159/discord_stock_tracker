@@ -1,16 +1,17 @@
+import io
 import json
-from typing import Any, Tuple, List
+from collections import Counter
+from typing import Any, List, Tuple
 
 import interactions
 import pandas as pd
 from redis import Redis
-from collections import Counter
 
 from ..funcs.printflush import printFlush
 from ..redis_connector import funcs as rds
 from . import helpers
-from .stock_functions import get_price_by_date, get_latest_price
 from .data_types import NotificationRow
+from .stock_functions import get_latest_price, get_price_by_date
 
 
 async def send_weekly_notifications(bot: interactions.Client, r: Any):
@@ -94,7 +95,11 @@ async def stock_update_user(
         channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
 
     for table in tables:
-        await channel.send("```" + table.__str__() + "```")
+        table_msg = io.StringIO()
+        table_msg.write("```")
+        table_msg.write(table.__str__())
+        table_msg.write("```")
+        await channel.send(table_msg.getvalue())
 
 
 async def build_table(
@@ -116,7 +121,7 @@ async def build_table(
         r"%",
     ]
     tables = []
-    channel_ids = []    
+    channel_ids = []
 
     curr_table = await helpers.pretty_table_defaults(headers=msg_headers)
 
@@ -134,7 +139,6 @@ async def build_table(
         # if table character length exceeds discord msg limit,
         # separate the table rows into list elements
         if len(curr_table.get_string()) > 2000:
-            # work in progress
             curr_table.del_row(-1)
             tables.append(curr_table)
             curr_table = await helpers.pretty_table_defaults(headers=msg_headers)
