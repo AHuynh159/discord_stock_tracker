@@ -77,6 +77,13 @@ async def stock_update_user(
     disc_id = id.decode("utf-8")
     table, channel_id = await build_table(r=r, disc_id=id, df=curr_data, tickers=tickers)
 
+    # create table in memory and send to Discord channel
+    with io.BytesIO() as buffer:
+        buffer = io.BytesIO()
+        await helpers.create_update_table(buffer, table)
+        buffer.seek(0)
+        file = interactions.File(fp=buffer, filename="table.png")
+
     if not msg:  # if not invoked by a user
         printFlush(f"sending weekly notification for {id}")
 
@@ -90,14 +97,7 @@ async def stock_update_user(
         channel_id = msg.channel_id.__str__()
 
     channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
-
-    # create table in memory and send to Discord channel
-    with io.BytesIO() as buffer:
-        buffer = io.BytesIO()
-        await helpers.create_update_table(buffer, table)
-        buffer.seek(0)
-        file = interactions.File(fp=buffer, filename="table.png")
-        await channel.send(None, files=file)
+    await channel.send(None, files=file)
 
 
 async def build_table(
