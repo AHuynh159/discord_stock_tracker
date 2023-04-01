@@ -4,6 +4,7 @@ from collections import Counter
 from typing import Any, List, Tuple
 
 import interactions
+import numpy as np
 import pandas as pd
 from redis import Redis
 
@@ -37,7 +38,6 @@ async def build_notification_rows(
     all_time_change = round(latest_price - tracked_data["book_cost"], 2)
     all_time_pct_change = round(
         all_time_change/tracked_data["book_cost"]*100, 2)
-    all_time_change_icon = await helpers.get_change_icon(all_time_pct_change)
 
     # get % change and icon comparing today with last week's price
     try:
@@ -45,22 +45,18 @@ async def build_notification_rows(
         last_week_change = round(latest_price - last_week_price, 2)
         last_week_pct_change = round(
             last_week_change/last_week_price*100, 2)
-        last_week_change_icon = await helpers.get_change_icon(last_week_pct_change)
     except Exception as e:
         printFlush(e)
         last_week_change = 0
         last_week_pct_change = 0
-        last_week_change_icon = await helpers.get_change_icon(0)
 
     # the row being built out
     curr_row.book_cost = round(tracked_data["book_cost"], 2)
     curr_row.current_price = round(latest_price, 2)
 
-    curr_row.delta_tracked_icon = all_time_change_icon
     curr_row.delta_tracked_amount = all_time_change
     curr_row.delta_tracked_pct = str(all_time_pct_change) + "%"
 
-    curr_row.delta_week_icon = last_week_change_icon
     curr_row.delta_week_amount = last_week_change
     curr_row.delta_week_pct = str(last_week_pct_change) + "%"
 
@@ -79,7 +75,7 @@ async def stock_update_user(
     tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
     curr_data: pd.DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
     disc_id = id.decode("utf-8")
-    tables, channel_id = await build_table(r=r, disc_id=id, df=curr_data, tickers=tickers)
+    table, channel_id = await build_table(r=r, disc_id=id, df=curr_data, tickers=tickers)
 
     if not msg:  # if not invoked by a user
         printFlush(f"sending weekly notification for {id}")
@@ -92,14 +88,16 @@ async def stock_update_user(
     else:
         await msg.edit(f"<@{disc_id}> Here's a list of stocks you're tracking.\n")
         channel_id = msg.channel_id.__str__()
-        channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
 
-    for table in tables:
-        table_msg = io.StringIO()
-        table_msg.write("```")
-        table_msg.write(table.__str__())
-        table_msg.write("```")
-        await channel.send(table_msg.getvalue())
+    channel = await interactions.get(bot, interactions.Channel, object_id=channel_id)
+
+    # create table in memory and send to Discord channel
+    with io.BytesIO() as buffer:
+        buffer = io.BytesIO()
+        await helpers.create_update_table(buffer, table)
+        buffer.seek(0)
+        file = interactions.File(fp=buffer, filename="table.png")
+        await channel.send("test", files=file)
 
 
 async def build_table(
@@ -107,23 +105,20 @@ async def build_table(
     disc_id: int,
     tickers: str,
     df: pd.DataFrame
-) -> Tuple[List[str], int]:
+) -> Tuple[pd.DataFrame, int]:
     msg_headers = [
         "Ticker",
         "Book Cost",
         "Current Price",
-        " ",
-        "$ Δ Since Tracked",
-        "% Δ Since Tracked",
-        "Δ From Last Week -->",
-        "  ",
-        "$",
-        r"%",
+        "$ Δ Inception",
+        "ROI Inception",
+        # "Δ vs. Last Week -->",
+        "$ Δ Weekly",
+        "% Δ Weekly",
     ]
-    tables = []
     channel_ids = []
 
-    curr_table = await helpers.pretty_table_defaults(headers=msg_headers)
+    curr_table: pd.DataFrame = pd.DataFrame(columns=msg_headers)
 
     for ticker in [t.decode("utf-8") for t in tickers]:
         latest_price = await get_latest_price(df=df, ticker=ticker)
@@ -133,17 +128,8 @@ async def build_table(
             latest_price=latest_price,
             ticker=ticker,
         )
-        curr_table.add_row(curr_row)
+        curr_table.loc[ticker] = np.array(curr_row)
         channel_ids.append(channel_id)
 
-        # if table character length exceeds discord msg limit,
-        # separate the table rows into list elements
-        if len(curr_table.get_string()) > 2000:
-            curr_table.del_row(-1)
-            tables.append(curr_table)
-            curr_table = await helpers.pretty_table_defaults(headers=msg_headers)
-            curr_table.add_row(curr_row)
-    tables.append(curr_table)
-
     counts = Counter(channel_ids)
-    return tables, counts.most_common(1)[0][0]
+    return curr_table, counts.most_common(1)[0][0]
