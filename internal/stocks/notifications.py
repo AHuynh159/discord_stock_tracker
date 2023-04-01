@@ -97,7 +97,7 @@ async def stock_update_user(
         await helpers.create_update_table(buffer, table)
         buffer.seek(0)
         file = interactions.File(fp=buffer, filename="table.png")
-        await channel.send("test", files=file)
+        await channel.send(None, files=file)
 
 
 async def build_table(
