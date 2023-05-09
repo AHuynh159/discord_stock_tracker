@@ -75,7 +75,7 @@ async def stock_update_user(
     tickers: list[bytes] = await rds.get_all_tickers_from_user(r=r, discord_id=id)
     curr_data: pd.DataFrame = await get_price_by_date([t.decode("utf-8") for t in list(tickers)])
     disc_id = id.decode("utf-8")
-    table, channel_id = await build_table(r=r, disc_id=id, df=curr_data, tickers=tickers)
+    table, channel_id = await build_weekly_table(r=r, disc_id=id, df=curr_data, tickers=tickers)
 
     # create table in memory and send to Discord channel
     with io.BytesIO() as buffer:
@@ -100,7 +100,7 @@ async def stock_update_user(
     await channel.send(None, files=file)
 
 
-async def build_table(
+async def build_weekly_table(
     r: Redis,
     disc_id: int,
     tickers: str,
