@@ -284,7 +284,7 @@ async def on_ready():
 @tasks.loop(hours=12)
 async def check_if_friday():
     printFlush(f"Checking if Friday: {date.today().weekday()==4}")
-    if date.today().weekday() == 4:  # 4 = Friday
+    if date.today().weekday() == 4 and datetime.utcnow().hour < 21:  # day 4 = Friday
         check_if_4pm.start()
         check_if_friday.stop()
 
